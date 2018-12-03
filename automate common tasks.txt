@@ -1,0 +1,82 @@
+Introduction
+
+First and foremost: I don't mean to lecture anyone here about BASH and what you can do with it. What I would like to do is to get some of you guys to think about procedures you do over and over again every day. I mean that annoying thing that you have to do several times a day that's taking away time from important other stuff you are doing. If you are working with Linux, you should know what I mean.
+
+
+Now imagine you wouldn't have to do that anymore. That would be great, wouldn't it?
+
+
+
+Getting Started
+
+This guide explains simple automation ideas in Linux only. To try out some of my ideas, you can set up a lab server here on Linuxacademy or use an AWS instance if you have one running
+
+
+If you are using Debian or Ubuntu often, you will have to run 'apt-get update' before you can install any new program or repo. This can be automated in a very simple way. Look at my code snippet below. I would suggest you make this file executable and place it into your /etc/cron.daily folder. Of course, you can also create a custom anacrontab for that.
+
+#!/bin/bash
+DATE=date sudo apt-get update 
+echo "apt-get update has been run at $DATE" >> /var/log/apt-getupdatestats
+
+Another script I have written is counting all files in certain directories on a virtual server. It's great for preventing disk usage problems. I would suggest integrating this script into a cron or anacron job that's running on a daily or at least weekly basis. Instead of getting the result of the file count dumped into the /home directory you could also use something like |mail -s "filecount server X $DATE" email@address.com
+
+#!/bin/bash
+cd $HOME 
+find * -maxdepth 0 -type d -exec sh -c "echo -n {} ' '; ls -lR {} | wc -l" \; > $HOME/filecount_homedir.txt 
+cd public_html/
+find * -maxdepth 0 -type d -exec sh -c "echo -n {} ' '; ls -lR {} | wc -l" \; > $HOME/filecountpublic_html.txt
+
+WordPress is the biggest Content Management System in the world, and I'm sure that at least some students here on Linuxacademy are managing one or more WordPress sites for a business or themselves. Now, once you have been doing that for a while you will have experienced the infamous 'white screen of death' or a generic '500 internal server error'. In my job, I have to troubleshoot situations like that every day. Checking the .htaccess file and if necessary replacing it with a default WordPress .htaccess file was something I had to do all the time. As it is quite a repetitive task and I was taking the "Administrator's Guide to Bash Scripting" course at that time I got the idea of creating a small script that compares a default WordPress .htaccess file with the one currently located in the user's web root. Look at my code below and try it out yourself! Of course, you would need to create your own directory on a free AWS EC2 instance for the default WordPress .htaccess. By doing that, you would also learn a bit about how AWS works, which is good to know.
+
+#!/bin/bash
+cd public_html/
+echo "Comparing both htaccess files..." 
+wget http://aws-default-files.com/cleanhtaccess/cleanwphtaccess 
+if diff .htaccess cleanwphtaccess >/dev/null ; 
+then 
+echo "THIS FILE IS SAFE AND NOT CORRUPTED" 
+else 
+echo "THIS FILE SEEMS TO BE CORRUPTED. RENAMING IT NOW!" && mv .htaccess .htaccess.corrupted 
+fi 
+mv cleanwphtaccess .htaccess
+
+Again, I would like to stress that I'm not claiming that my code is perfect. It's a work in progress. Sometimes I try to add stuff to it or change it. So if you see a mistake or have a better idea, contact me in the community. I'm very open to improvement suggestions!
+
+
+Another thing I have automated on my cloud instances is maintenance of the logs. To begin with, I have changed the configuration of logrotate so it compresses old logs after 2 weeks. In addition to that, I'm using the script below stored in the /etc/cron.weekly directory. I'm doing that because anacron is checking files in there if they have been run in the last week or not. If it finds that it hasn't run in the last week, it will execute the script on the spot without the admin ever having to worry about it. This is extremely helpful if you don't have the instance running 24/7.
+
+#!/bin/bash
+cd /var/log
+find . -iname "*.gz" -atime +14 -type f | xargs -I{} mv {} /var/log/oldlogs > /var/log/oldlog_output 2>&1
+
+The reason I'm running this script on a regular basis is partially to get a better overview of the /var/log directory but also to get 'old' log files separated from the current ones. I have another script running that empties the content of the /var/log/oldlogs directory every other month.
+
+
+The /var/log directory can be used for many automated scripts I think. The other automated script I run there checks for failed login attempts and sends the output to my email address every week. The example below is correct for Ubuntu or Debian based servers.
+
+#!/bin/bash
+EMAIL=your.email@address.com 
+cd /var/log 
+tail -n 30 auth.log | grep -i "failed" | mail -s "Failed SSH Logins" $EMAIL
+
+Last but not least, there is a script I'm using all the time. It might not be as helpful for other people as not everyone here is working for a Web Hosting Company.
+
+
+What it does is to send 'reminder emails' to individuals who tend to forget about certain processes I have told them about many times before. I have come up with this idea because
+
+I was asked the same questions over and over again and wanted to find a way to make it stop. Look at my code below:
+
+
+EMAIL=recipient.a@emailprovider.com,recipient.b@emailprovider.com,recipient.c@emailprovider.com,recipient.d@emailprovider.com,recipient.e@emailprovider.com, recipient.f@emailprovider.com,recipient.g@emailprovider.com,recipient.h@emailprovider.com,recipient.i@emailprovider.com,recipient.j@emailprovider.com 
+cat /home/checkdns.txt | mail -s "How to check the DNS for Hosting Cases" $EMAIL
+
+This works for at least 40 recipients at the same time (It should work with more recipients as well, but 40 was the highest number of recipients I have tried so far).
+
+
+You can use this script with cron or anacron so it sends the reminder on certain days or a daily/weekly basis. Theoretically, you can also use this script to send some sort of report to your manager.
+
+However, this would require the manager use a Dropbox account (with a free account they would need to invite their team members and other colleagues to increase their storage space to 16GB).
+
+If you're interested and want to know how to do it, just respond to this guide! I'll be happy to explain it to you.
+
+These are a few clever day-to-day automation ideas. As mentioned before, feel free to contact me in the community and ask me about some of my scripts or tell me if you have a better idea for them.
