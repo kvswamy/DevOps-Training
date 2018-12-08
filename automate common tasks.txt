@@ -1,3 +1,4 @@
+testing
 Introduction
 
 First and foremost: I don't mean to lecture anyone here about BASH and what you can do with it. What I would like to do is to get some of you guys to think about procedures you do over and over again every day. I mean that annoying thing that you have to do several times a day that's taking away time from important other stuff you are doing. If you are working with Linux, you should know what I mean.
